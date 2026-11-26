@@ -1,0 +1,12 @@
+{
+  "place": "none",
+  "title": "Realms",
+  "palette": [
+    { "title": "Harry Potter: Gryffindor (Light)", "command": "hogwarts-systems.light", "words": "Gryffindor Hogwarts light parchment appearance theme" },
+    { "title": "Harry Potter: Slytherin (Dark)", "command": "hogwarts-systems.dark", "words": "Slytherin Hogwarts dark arts appearance theme" }
+  ],
+  "cloned_from": {
+    "name": "spaces",
+    "version": "0.1.16"
+  }
+}

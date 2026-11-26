@@ -1,0 +1,11 @@
+{
+  "place": "none",
+  "title": "Harry Potter · Tabs",
+  "palette": [
+    { "title": "Harry Potter: Toggle Spell Run", "command": "hogwarts-tabs.toggle-spell-run", "words": "spell run game disable enable hide show top bar button" }
+  ],
+  "cloned_from": {
+    "name": "tabs",
+    "version": "0.1.16"
+  }
+}
