@@ -6,7 +6,7 @@ REPO="$(cd "$(dirname "$0")" && pwd)"
 HERDR_HOME="${HERDR_APP_HOME:-$HOME/.config/herdr-app}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP="$HERDR_HOME/backups/hogwarts-$STAMP"
-MODS="hogwarts-agents hogwarts-alerts hogwarts-status hogwarts-systems hogwarts-arena hogwarts-spell-run hogwarts-tabs"
+MODS="hogwarts-agents hogwarts-alerts hogwarts-status hogwarts-systems hogwarts-arena bomb-run hogwarts-tabs"
 
 fail() { echo "install.sh: $*" >&2; exit 1; }
 command -v herdr-app >/dev/null 2>&1 || fail "herdr-app is not on PATH. Install Herdr and try again."

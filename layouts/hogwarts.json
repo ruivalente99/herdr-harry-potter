@@ -148,11 +148,12 @@
                       "title": "Spell Run",
                       "type": "block",
                       "content": {
-                        "mod": "hogwarts-spell-run",
+                        "mod": "bomb-run",
                         "props": {
                           "panel": "panel",
                           "stack": "panel-body",
-                          "child": "spell-run"
+                          "child": "spell-run",
+                          "override": "mods/hogwarts-tabs/bomb-run-override.json"
                         }
                       }
                     }

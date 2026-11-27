@@ -18,8 +18,8 @@ DEST = ROOT / "docs/images/overview.svg"
 ARENA = ROOT / "docs/images/arena.svg"
 SPELL_RUN = ROOT / "docs/images/spell-run.svg"
 LAYOUT_SVG = ROOT / "layouts/hogwarts.svg"
-DECK = ROOT / "mods/hogwarts-spell-run/decks.js"
-SPELL_ART = "mods/hogwarts-spell-run/art"
+DECK = ROOT / "mods/hogwarts-tabs/bomb-run-override.json"
+SPELL_ART = "mods/hogwarts-tabs/arcade"
 SPRITES = "mods/hogwarts-agents/sprites/hogwarts"
 SYMBOLS = {}
 
@@ -169,8 +169,7 @@ def build_arena():
 def build_spell_run():
     SYMBOLS.clear()
     t = dark_theme()
-    source = DECK.read_text()
-    potions = json.loads(source[source.index("["):source.rindex("]") + 1])[1]
+    potions = json.loads(DECK.read_text())["decks"][1]
     scale, ox, oy = 2, 24, 124
     tile = lambda c, r: (ox + c * 16 * scale, oy + (32 + r * 16) * scale)
     body = [rect(0, 0, 464, 640, t["background"], 14),

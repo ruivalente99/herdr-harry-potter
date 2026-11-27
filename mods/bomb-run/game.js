@@ -1,6 +1,4 @@
-// Synced from herdr-common (mods/arcade/game.js). Do not edit directly; edit pack.config.mjs and run sync.
-import { DECKS } from "./decks.js";
-import { ARCADE_CONFIG } from "./config.js";
+import { DEFAULT_CONFIG } from "./config.js";
 
 export const WIDTH = 13;
 export const HEIGHT = 11;
@@ -14,11 +12,8 @@ const SPAWNS = [
   { x: 11, y: 9 }, { x: 11, y: 1 }, { x: 1, y: 9 }, { x: 9, y: 9 },
   { x: 9, y: 1 }, { x: 11, y: 7 }, { x: 3, y: 9 }, { x: 7, y: 9 },
 ];
-const HOSTILES = ARCADE_CONFIG.hostiles;
-const REPEATABLE = ARCADE_CONFIG.repeatable;
-const DEFAULT_HERO = ARCADE_CONFIG.defaultHero;
-const RANKS = ARCADE_CONFIG.ranks;
-export const BUFFS = ARCADE_CONFIG.buffs;
+
+export const BUFFS = DEFAULT_CONFIG.buffs;
 
 export function normalizeProfile(value) {
   return {
@@ -27,71 +22,89 @@ export function normalizeProfile(value) {
   };
 }
 
-export function trainingFor(xp) {
+export function trainingFor(xp, cfg = DEFAULT_CONFIG) {
+  const ranks = cfg.ranks;
   xp = normalizeProfile({ xp }).xp;
   let index = 0;
-  while (index + 1 < RANKS.length && xp >= RANKS[index + 1].xp) index++;
-  const nextXP = RANKS[index + 1]?.xp ?? null;
+  while (index + 1 < ranks.length && xp >= ranks[index + 1].xp) index++;
+  const nextXP = ranks[index + 1]?.xp ?? null;
   return {
-    rank: index + 1, title: RANKS[index].title, xp, nextXP,
-    progress: nextXP == null ? 1 : (xp - RANKS[index].xp) / (nextXP - RANKS[index].xp),
+    rank: index + 1,
+    title: ranks[index].title,
+    xp,
+    nextXP,
+    progress: nextXP == null ? 1 : (xp - ranks[index].xp) / (nextXP - ranks[index].xp),
   };
 }
 
-export function powerFor(game) {
-  const rank = trainingFor(game.xp);
+export function powerFor(game, cfg = DEFAULT_CONFIG) {
+  const buffs = cfg.buffs;
+  const rank = trainingFor(game.xp, cfg);
   const level = normalizeProfile(game).level;
-  const unlocks = Object.fromEntries(Object.entries(BUFFS).map(([id, buff]) => [id, level >= buff.level && rank.xp >= buff.xp]));
+  const unlocks = Object.fromEntries(Object.entries(buffs).map(([id, buff]) => [id, level >= buff.level && rank.xp >= buff.xp]));
   const advanced = level >= 5 && rank.xp >= 1200;
   const elite = level >= 8 && rank.xp >= 2200;
   const payload = (game.payload === "nova" && unlocks.nova) || (game.payload === "echo" && unlocks.echo) ? game.payload : "standard";
   return {
-    ...rank, unlocks, payload, range: 2 + Number(unlocks.range) + Number(advanced) + Number(elite),
-    capacity: 1 + Number(unlocks.rack) + Number(elite), wide: payload === "nova", echo: payload === "echo",
-    line: unlocks.line, stepMs: unlocks.speed ? 120 : STEP_MS,
+    ...rank,
+    unlocks,
+    payload,
+    range: 2 + Number(unlocks.range) + Number(advanced) + Number(elite),
+    capacity: 1 + Number(unlocks.rack) + Number(elite),
+    wide: payload === "nova",
+    echo: payload === "echo",
+    line: unlocks.line,
+    stepMs: unlocks.speed ? 120 : STEP_MS,
   };
 }
 
-export function cyclePayload(game) {
+export function cyclePayload(game, cfg = DEFAULT_CONFIG) {
   if (game.status !== "playing") return false;
-  const power = powerFor(game);
+  const power = powerFor(game, cfg);
   const choices = ["standard", ...["nova", "echo"].filter((id) => power.unlocks[id])];
   if (choices.length === 1) return false;
   game.payload = choices[(choices.indexOf(power.payload) + 1) % choices.length];
-  game.notice = { message: `${game.payload[0].toUpperCase()}${game.payload.slice(1)} ${ARCADE_CONFIG.labels.payloadNoun} selected`, until: game.elapsed + 2000 };
+  game.notice = {
+    message: `${game.payload[0].toUpperCase()}${game.payload.slice(1)} ${cfg.labels.payloadNoun} selected`,
+    until: game.elapsed + 2000,
+  };
   return true;
 }
 
-function upgradeNotice(game, before) {
-  const power = powerFor(game);
-  const unlocked = Object.keys(BUFFS).find((id) => power.unlocks[id] && !before.unlocks[id]);
-  const message = unlocked ? `${BUFFS[unlocked].name} unlocked` : power.range > before.range || power.capacity > before.capacity
-    ? ARCADE_CONFIG.labels.payloadUpgradeMsg : power.rank > before.rank ? `Promoted to ${power.title}` : null;
+function upgradeNotice(game, before, cfg = DEFAULT_CONFIG) {
+  const buffs = cfg.buffs;
+  const power = powerFor(game, cfg);
+  const unlocked = Object.keys(buffs).find((id) => power.unlocks[id] && !before.unlocks[id]);
+  const message = unlocked ? `${buffs[unlocked].name} unlocked` : power.range > before.range || power.capacity > before.capacity
+    ? cfg.labels.payloadUpgradeMsg : power.rank > before.rank ? `Promoted to ${power.title}` : null;
   if (message) game.notice = { message, until: game.elapsed + 2400 };
 }
 
-export function deckFor(level) {
-  return DECKS[(normalizeProfile({ level }).level - 1) % DECKS.length];
+export function deckFor(level, cfg = DEFAULT_CONFIG) {
+  const decks = cfg.decks;
+  return decks[(normalizeProfile({ level }).level - 1) % decks.length];
 }
 
 // The pilot counts toward uniqueness. Only the repeatable character may repeat.
-export function enemyRoster(hero, count, level = 1) {
-  const offset = ((normalizeProfile({ level }).level - 1) * 3) % HOSTILES.length;
-  const candidates = HOSTILES.map((_, index) => HOSTILES[(index + offset) % HOSTILES.length])
-    .filter((candidate) => candidate !== hero || candidate === REPEATABLE);
-  return Array.from({ length: count }, (_, index) => candidates[index] ?? REPEATABLE);
+export function enemyRoster(hero, count, level = 1, cfg = DEFAULT_CONFIG) {
+  const hostiles = cfg.hostiles;
+  const repeatable = cfg.repeatable;
+  const offset = ((normalizeProfile({ level }).level - 1) * 3) % hostiles.length;
+  const candidates = hostiles.map((_, index) => hostiles[(index + offset) % hostiles.length])
+    .filter((candidate) => candidate !== hero || candidate === repeatable);
+  return Array.from({ length: count }, (_, index) => candidates[index] ?? repeatable);
 }
 
 const inside = (x, y) => x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT;
 const same = (a, b) => a.x === b.x && a.y === b.y;
 const onFlame = (game, point) => game.flames.some((flame) => same(flame, point) && flame.until > game.elapsed);
 
-export function newGame(options = {}) {
+export function newGame(options = {}, cfg = DEFAULT_CONFIG) {
   const { level, xp } = normalizeProfile(options);
-  const deck = deckFor(level);
-  const hero = HOSTILES.includes(options.hero) ? options.hero : DEFAULT_HERO;
+  const deck = deckFor(level, cfg);
+  const hero = cfg.hostiles.includes(options.hero) ? options.hero : cfg.defaultHero;
   const enemyTotal = Math.min(SPAWNS.length, 4 + Math.floor((level - 1) / 2));
-  const roster = enemyRoster(hero, enemyTotal, level);
+  const roster = enemyRoster(hero, enemyTotal, level, cfg);
   const spawns = SPAWNS.slice(0, enemyTotal);
   const elapsed = options.elapsed ?? 0;
   const board = deck.layout.map((row, y) => [...row].map((kind, x) => {
@@ -111,21 +124,21 @@ export function newGame(options = {}) {
   };
 }
 
-export function nextLevel(game) {
+export function nextLevel(game, cfg = DEFAULT_CONFIG) {
   if (game.status !== "won") return game;
-  const next = newGame({ hero: game.hero, level: game.level + 1, xp: game.xp, score: game.score, elapsed: game.elapsed, payload: game.payload });
-  upgradeNotice(next, powerFor(game));
+  const next = newGame({ hero: game.hero, level: game.level + 1, xp: game.xp, score: game.score, elapsed: game.elapsed, payload: game.payload }, cfg);
+  upgradeNotice(next, powerFor(game, cfg), cfg);
   return next;
 }
 
-export function movePlayer(game, dx, dy) {
+export function movePlayer(game, dx, dy, cfg = DEFAULT_CONFIG) {
   if (game.status !== "playing" || Math.abs(dx) + Math.abs(dy) !== 1) return false;
   const next = { x: game.player.x + dx, y: game.player.y + dy };
   if (!inside(next.x, next.y) || game.board[next.y][next.x] !== ".") return false;
   if (game.bombs.some((bomb) => same(bomb, next)) || game.enemies.some((enemy) => same(enemy, next))) return false;
   game.player = {
     ...game.player, ...next, facing: dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down",
-    moving: true, movedAt: game.elapsed, step: (game.player.step ?? 0) + 1, moveMs: powerFor(game).stepMs,
+    moving: true, movedAt: game.elapsed, step: (game.player.step ?? 0) + 1, moveMs: powerFor(game, cfg).stepMs,
   };
   if (onFlame(game, next)) { game.status = "lost"; game.reason = "blast"; }
   return true;
@@ -138,13 +151,13 @@ function plant(game, point, power) {
   return true;
 }
 
-export function placeBomb(game) {
-  const power = powerFor(game);
+export function placeBomb(game, cfg = DEFAULT_CONFIG) {
+  const power = powerFor(game, cfg);
   return game.status === "playing" && game.bombs.length < power.capacity && plant(game, game.player, power);
 }
 
-export function placeLine(game) {
-  const power = powerFor(game);
+export function placeLine(game, cfg = DEFAULT_CONFIG) {
+  const power = powerFor(game, cfg);
   if (game.status !== "playing" || !power.line) return 0;
   const [dx, dy] = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[game.player.facing] ?? [0, 1];
   const count = power.capacity - game.bombs.length;
@@ -236,9 +249,9 @@ function moveEnemies(game) {
   }
 }
 
-export function tick(game, delta = TICK_MS) {
+export function tick(game, delta = TICK_MS, cfg = DEFAULT_CONFIG) {
   if (game.status !== "playing") return;
-  const before = powerFor(game);
+  const before = powerFor(game, cfg);
   delta = Math.max(0, delta);
   game.elapsed += delta;
   for (const actor of [game.player, ...game.enemies]) actor.moving = game.elapsed - actor.movedAt < (actor.moveMs ?? STEP_MS);
@@ -256,7 +269,7 @@ export function tick(game, delta = TICK_MS) {
     for (const bomb of ready) blast(game, bomb);
   }
   resolveFlames(game);
-  upgradeNotice(game, before);
+  upgradeNotice(game, before, cfg);
   if (game.status !== "playing") return;
   game.enemyClock += delta;
   while (game.enemyClock >= game.enemyStepMs && game.status === "playing") {

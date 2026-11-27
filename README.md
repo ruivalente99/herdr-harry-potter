@@ -145,7 +145,7 @@ herdr-app do mod.open --name hogwarts-arena
 A Bomberman-style Wizarding arcade game. Open it from the command palette or from the **Spell Run** button in the top bar, next to Files and Changes. Run **Harry Potter: Toggle Spell Run** from the command palette to hide or restore the button. To open it directly:
 
 ```sh
-herdr-app do mod.open --name hogwarts-spell-run
+herdr-app do mod.open --name bomb-run
 ```
 
 Plant bubbling **Exploding Cauldrons** with **Space**, move with **WASD / arrow keys**, pause with **P / Escape**, restart with **R**, cast facing volleys with **Q**, and cycle special spells (**Standard / Fiendfyre / Time-Turner Echo**) with **E**.
@@ -191,8 +191,9 @@ Generated artwork and fixed wall layouts, not an app screenshot. Enchanted barre
 | Character pixels, palettes and spells | `tools/build-sprites.py` |
 | Wizarding location emblems and backdrops | `tools/build-realm-backgrounds.py` |
 | Dueling Club presets, profiles and banter | `mods/hogwarts-arena/choreography.js` |
-| Spell Run rooms and wall maps | `mods/hogwarts-spell-run/decks.js` |
-| Spell Run room art, props and walking atlases | `tools/build-spell-run-art.py` |
+| Spell Run standalone engine | `mods/bomb-run/` (synced from `herdr-common`) |
+| Spell Run Hogwarts skin override, rooms and labels | `pack.config.mjs` → `mods/hogwarts-tabs/bomb-run-override.{js,json}` |
+| Spell Run room art, props and walking atlases | `tools/build-spell-run-art.py` → `mods/hogwarts-tabs/arcade/` |
 | Mini-duel dialogue and presentation | `mods/hogwarts-agents/battle.js` |
 | README illustrations, `layouts/hogwarts.svg` and `preview.png` | `tools/build-readme-art.py` |
 

@@ -14,7 +14,7 @@ import struct
 import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
-ART = ROOT / "mods/hogwarts-spell-run/art"
+ART = ROOT / "mods/hogwarts-tabs/arcade"
 CAST = ROOT / "mods/hogwarts-agents/sprites/hogwarts"
 INK = "#11151f"
 
@@ -438,7 +438,7 @@ def overview(specs, destination):
 
 def main(preview=None):
     ART.mkdir(parents=True, exist_ok=True)
-    specs = json.loads((ROOT / "mods/hogwarts-spell-run/decks.js").read_text().removeprefix("export const DECKS = ").strip().removesuffix(";"))
+    specs = json.loads((ROOT / "mods/hogwarts-tabs/bomb-run-override.json").read_text())["decks"]
     for spec in specs:
         deck(spec)
     props()

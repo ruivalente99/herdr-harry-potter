@@ -25,15 +25,15 @@ The layout is a full-height window split into a sidebar and work area. The previ
 
 - **Cast:** 14 standard characters (*Harry Potter, Hermione Granger, Ron Weasley, Albus Dumbledore, Severus Snape, Rubeus Hagrid, Prof. McGonagall, Sirius Black, Draco Malfoy, Luna Lovegood, Bellatrix Lestrange, Dobby, Hedwig, Dementor*) plus **Lord Voldemort** on Slytherin (dark). Only Dementors repeat.
 - **Dueling Club (`hogwarts-arena`):** Open from the palette (**Harry Potter: Dueling Club**) or expand a mini duel. Four presets (**Golden Trio, Hogwarts, Order, Allies**) plus **Custom** (2–8 wizards), 0.5×/1×/2× speed, pause, replay and reduced motion.
-- **Spell Run (`hogwarts-spell-run`):** Eight Hogwarts rooms (*Great Hall, Potions Dungeon, Restricted Section, Herbology Greenhouse, Quidditch Pitch, Chamber of Secrets, Ministry Atrium, Forbidden Forest*), Exploding Cauldrons, Enchanted Barrels, per-agent XP/room progression, six deck+XP charm milestones, exclusive Fiendfyre / Time-Turner Echo spells, and optional **Thinking only** agent gating.
+- **Spell Run (`bomb-run` + Hogwarts override):** Eight Hogwarts rooms (*Great Hall, Potions Dungeon, Restricted Section, Herbology Greenhouse, Quidditch Pitch, Chamber of Secrets, Ministry Atrium, Forbidden Forest*), Exploding Cauldrons, Enchanted Barrels, per-agent XP/room progression, six deck+XP charm milestones, exclusive Fiendfyre / Time-Turner Echo spells, and optional **Thinking only** agent gating. Powered by the standalone `mods/bomb-run` engine overridden via `mods/hogwarts-tabs/bomb-run-override.{js,json}` and `mods/hogwarts-tabs/arcade/`.
 
 ## Built from
 
-`layouts/hogwarts.json` composes `hogwarts-systems`, `hogwarts-agents`, `hogwarts-tabs`, `hogwarts-spell-run`, `hogwarts-status`, `hogwarts-alerts`, and the optional `hogwarts-arena` overlay alongside Herdr's built-in `workspace-chrome`, `pane`, `files`, and `changes` mods.
+`layouts/hogwarts.json` composes `hogwarts-systems`, `hogwarts-agents`, `hogwarts-tabs` (which registers the Hogwarts Spell Run override for `bomb-run`), `bomb-run`, `hogwarts-status`, `hogwarts-alerts`, and the optional `hogwarts-arena` overlay alongside Herdr's built-in `workspace-chrome`, `pane`, `files`, and `changes` mods.
 
 ## Done when
 
-1. `herdr-app check` passes for all seven `mods/hogwarts-*` folders.
+1. `herdr-app check` passes for all six `mods/hogwarts-*` folders and `mods/bomb-run`.
 2. `herdr-app do layout.switch --name hogwarts` loads without errors and renders Realms, Wizards, tabs, pane, status and the Hogwarts backdrop.
 3. Gryffindor and Slytherin commands switch appearance and theme while preserving unrelated settings.
 4. Dueling Club and Spell Run open, respect pause/Escape/Thinking-only gating, and never send commands to real agents.
