@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs the Harry Potter (Hogwarts) layout and its seven custom mods into a Herdr app home.
+# Synced from herdr-common. Installs the Harry Potter layout and its seven custom mods into a Herdr app home.
 set -eu
 
 REPO="$(cd "$(dirname "$0")" && pwd)"

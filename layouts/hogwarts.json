@@ -149,7 +149,11 @@
                       "type": "block",
                       "content": {
                         "mod": "hogwarts-spell-run",
-                        "props": { "panel": "panel", "stack": "panel-body", "child": "spell-run" }
+                        "props": {
+                          "panel": "panel",
+                          "stack": "panel-body",
+                          "child": "spell-run"
+                        }
                       }
                     }
                   ],
@@ -181,7 +185,10 @@
       "resizable": false
     }
   ],
-  "background": { "image": "backgrounds/realms/slytherin/great-hall.png", "fit": "cover" },
+  "background": {
+    "image": "backgrounds/realms/slytherin/great-hall.png",
+    "fit": "cover"
+  },
   "terminal_opacity": 0.88,
   "terminal_padding": [
     14,

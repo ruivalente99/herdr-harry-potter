@@ -13,9 +13,18 @@ This project is a standalone Harry Potter layout for Herdr using the `hogwarts-*
 - **`hogwarts-tabs`** — Top tab bar with the **Spell Run** panel button and `hogwarts-tabs.toggle-spell-run` command (`hogwarts.spell-run`).
 - **`hogwarts-spell-run`** — Bomberman-style arcade game (`decks.js`, `game.js`, `scene.js`, `ui.js`, `main.js`) across 8 Hogwarts rooms with 60 four-direction walking atlases and per-agent persistence (`wizard-progress`, `thinking-only`).
 
+## Shared Engine (`herdr-common`)
+
+All seven mod engines, `layouts/hogwarts.json`, `install.sh`, and the regression test suite are maintained centrally in the sibling [`herdr-common`](../herdr-common) library and synced from [`pack.config.mjs`](../pack.config.mjs). Edit labels, wizards, spells, quotes, realms, or Spell Run rooms in `pack.config.mjs`, then run:
+
+```sh
+npm run sync
+```
+
 ## Verification
 
 ```sh
 node --test tools/*.test.mjs
+npm run check:sync
 for m in mods/hogwarts-*; do herdr-app check "$m"; done
 ```

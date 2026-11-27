@@ -1,22 +1,15 @@
+// Synced from herdr-common (mods/arcade/main.js). Do not edit directly; edit pack.config.mjs and run sync.
 import { View } from "gpui-kit";
 import { agents, closeOverlay, checking, props, shared, spaces, theme, window, layout, run, openOverlay } from "herdr";
+import { ARCADE_CONFIG } from "./config.js";
 import { TICK_MS, cyclePayload, deckFor, powerFor, movePlayer, newGame, nextLevel, normalizeProfile, placeBomb, placeLine, tick } from "./game.js";
 import { gamePanel } from "./ui.js";
 
-const NAMES = {
-  voldemort: "Lord Voldemort", harry: "Harry Potter", hermione: "Hermione Granger", ron: "Ron Weasley",
-  dumbledore: "Albus Dumbledore", snape: "Severus Snape", hagrid: "Rubeus Hagrid", mcgonagall: "Prof. McGonagall",
-  sirius: "Sirius Black", draco: "Draco Malfoy", luna: "Luna Lovegood", bellatrix: "Bellatrix Lestrange",
-  dobby: "Dobby", hedwig: "Hedwig", dementor: "Dementor",
-};
-const REALMS = {
-  "great-hall": "Great Hall", "hogwarts-express": "Hogwarts Express", "gryffindor-tower": "Gryffindor Tower",
-  "slytherin-dungeon": "Slytherin Dungeon", "quidditch-pitch": "Quidditch Pitch",
-  "diagon-alley": "Diagon Alley", "astronomy-tower": "Astronomy Tower",
-};
+const NAMES = ARCADE_CONFIG.heroNames;
+const LOCATIONS = ARCADE_CONFIG.locationNames;
 const MOVES = { up: [0, -1], w: [0, -1], down: [0, 1], s: [0, 1], left: [-1, 0], a: [-1, 0], right: [1, 0], d: [1, 0] };
-const keyOf = event => String(event.key ?? event.keystroke).toLowerCase().replace(/^arrow/, "");
-const PROGRESS_KEY = "wizard-progress";
+const keyOf = (event) => String(event.key ?? event.keystroke).toLowerCase().replace(/^arrow/, "");
+const PROGRESS_KEY = ARCADE_CONFIG.progressKey;
 
 function loadProgress() {
   try {
@@ -43,7 +36,7 @@ export function gameVisible(tree, ownProps) {
 
 export function character(agent, cast) {
   const assigned = agent && cast && typeof cast === "object" ? cast[agent.address] : null;
-  return Object.hasOwn(NAMES, assigned) ? assigned : "harry";
+  return Object.hasOwn(NAMES, assigned) ? assigned : ARCADE_CONFIG.defaultHero;
 }
 
 function clock(ms) {
@@ -51,7 +44,7 @@ function clock(ms) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-export default class SpellRun extends View {
+export default class ArcadeRun extends View {
   init(_props, cx) {
     this.focus = cx.focus_handle();
     this.started = false;
@@ -68,14 +61,16 @@ export default class SpellRun extends View {
     this.showControls = false;
     this.viewWidth = 368;
     this.viewHeight = 640;
-    const active = spaces().find(space => space.active);
-    this.selectedAddress = (agents().find(agent => agent.address === props()?.pilot) ?? agents().find(agent => agent.focused)
-      ?? agents().find(agent => agent.space === active?.id) ?? agents()[0])?.address ?? null;
+    const active = spaces().find((space) => space.active);
+    this.selectedAddress = (agents().find((agent) => agent.address === props()?.pilot) ?? agents().find((agent) => agent.focused)
+      ?? agents().find((agent) => agent.space === active?.id) ?? agents()[0])?.address ?? null;
     this.progressKey = this.selectedAddress ?? "__training__";
     this.progress = checking() ? {} : loadProgress();
     this.game = this.mission();
     if (checking()) return;
-    cx.timer.every(TICK_MS, cx => {
+    // Fixed simulation ticks support the 120 ms speed milestone exactly;
+    // position interpolation stays native. Nothing advances while gated/paused.
+    cx.timer.every(TICK_MS, (cx) => {
       if (this.waitingForAgent()) { this.held = null; return; }
       if (!this.started || this.paused || this.game.status !== "playing") return;
       if (window()?.visible === false || !gameVisible(layout(), props()) || !this.focus.is_focused()) {
@@ -92,7 +87,7 @@ export default class SpellRun extends View {
   }
 
   waitingForAgent() {
-    return this.thinkingOnly && agents().find(agent => agent.address === this.selectedAddress)?.status !== "working";
+    return this.thinkingOnly && agents().find((agent) => agent.address === this.selectedAddress)?.status !== "working";
   }
 
   toggleThinking(cx) {
@@ -100,7 +95,7 @@ export default class SpellRun extends View {
     this.held = null;
     if (!checking()) {
       try { localStorage.setItem("thinking-only", String(this.thinkingOnly)); }
-      catch (error) { console.warn(`Spell Run: setting could not be saved: ${error}`); }
+      catch (error) { console.warn(`${ARCADE_CONFIG.title}: setting could not be saved: ${error}`); }
     }
     cx.notify();
   }
@@ -117,11 +112,11 @@ export default class SpellRun extends View {
     this.held = null;
     this.optionsOpen = false;
     cx.notify();
-    openOverlay({ mod: "hogwarts-spell-run", kind: "dialog", width: 640, height: 760, props: { pilot: this.selectedAddress } });
+    openOverlay({ mod: ARCADE_CONFIG.modName, kind: "dialog", width: 640, height: 760, props: { pilot: this.selectedAddress } });
   }
 
   pilotHero() {
-    return character(agents().find(agent => agent.address === this.selectedAddress), shared("hogwarts-agents.cast"));
+    return character(agents().find((agent) => agent.address === this.selectedAddress), shared(ARCADE_CONFIG.castKey));
   }
 
   profile() {
@@ -144,7 +139,7 @@ export default class SpellRun extends View {
     } };
     if (!this.storageFailed) {
       try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(this.progress)); }
-      catch (error) { this.storageFailed = true; console.warn(`Spell Run: progress could not be saved: ${error}`); }
+      catch (error) { this.storageFailed = true; console.warn(`${ARCADE_CONFIG.title}: progress could not be saved: ${error}`); }
     }
   }
 
@@ -200,7 +195,7 @@ export default class SpellRun extends View {
   selectAgent(direction, cx) {
     const list = agents();
     if (!list.length) return;
-    const current = list.findIndex(agent => agent.address === this.selectedAddress);
+    const current = list.findIndex((agent) => agent.address === this.selectedAddress);
     const index = current < 0 ? (direction > 0 ? -1 : 0) : current;
     this.persist();
     this.selectedAddress = list[(index + direction + list.length) % list.length].address;
@@ -256,13 +251,13 @@ export default class SpellRun extends View {
   render() {
     const t = theme();
     const list = agents();
-    const selected = list.find(agent => agent.address === this.selectedAddress);
+    const selected = list.find((agent) => agent.address === this.selectedAddress);
     const hero = this.game.hero;
     const power = powerFor(this.game);
     const deck = deckFor(this.game.level);
-    const activeSpace = spaces().find(space => space.active);
-    const assignment = shared("hogwarts.realms")?.[activeSpace?.id];
-    const realmName = REALMS[assignment] ?? "Hogwarts";
+    const activeSpace = spaces().find((space) => space.active);
+    const assignment = shared(ARCADE_CONFIG.locationsSharedKey)?.[activeSpace?.id];
+    const locationName = LOCATIONS[assignment] ?? ARCADE_CONFIG.defaultLocationName;
     const waiting = this.waitingForAgent();
     const options = {
       tile: this.tileSize, hero, started: this.started, paused: this.paused, epoch: this.epoch,
@@ -270,7 +265,7 @@ export default class SpellRun extends View {
         : "No selected agent is connected. Disable Thinking only to train." : null,
     };
     return gamePanel(this, {
-      t, selected, heroName: NAMES[hero], power, deck, realmName, waiting, options,
+      t, selected, heroName: NAMES[hero], power, deck, locationName, waiting, options,
       overlay: Boolean(props()?.overlay), canSwitch: list.length > 1 || (list.length === 1 && !selected),
       time: clock(this.game.elapsed),
     });

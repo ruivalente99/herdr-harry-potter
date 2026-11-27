@@ -1,12 +1,18 @@
 {
   "place": "none",
   "title": "Harry Potter · Dueling Club",
-  "overlay": { "kind": "dialog", "width": 704, "height": 560 },
+  "overlay": {
+    "kind": "dialog",
+    "width": 704,
+    "height": 560
+  },
   "palette": [
     {
       "title": "Harry Potter: Dueling Club",
       "command": "mod.open",
-      "args": { "name": "hogwarts-arena" },
+      "args": {
+        "name": "hogwarts-arena"
+      },
       "words": "harry potter hogwarts dueling club arena battle spells wands custom squads conversations"
     }
   ]

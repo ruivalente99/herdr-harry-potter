@@ -1,14 +1,18 @@
+// Synced from herdr-common (mods/agents/main.js). Do not edit directly; edit pack.config.mjs and run sync.
 // Agents in grouped or priority views; parents take their most urgent sub-agent's place.
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { agents, settings, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, hc, checking } from "herdr";
+import { AGENTS_CONFIG } from "./config.js";
 import { parseContext, parseModel } from "./agent-stats.js";
 import { pickHero, repairCast } from "./casting.js";
 import { battleScene, find, heroSprite, SPRITE_SIZE } from "./battle.js";
 
+// The sidebar's rail goes by its width, not a flag: dragging its edge narrows it too.
 const narrow = () => (find(layout(), "sidebar")?.size?.px ?? Infinity) < 160;
 
+// To the rail (on macOS wide enough for the traffic lights), or back to the width it had.
 function toggleSidebar() {
   const width = find(layout(), "sidebar")?.size?.px;
   if (!narrow()) setShared("sidebar.width", width);
@@ -35,6 +39,7 @@ function title(tab, l) {
   const telling = live && live !== (l?.terminal ?? l?.address) && live !== prog && !path && !live.includes("@") && live.toLowerCase() !== l?.program?.key;
   return (tab.name === prog || !tab.named) && telling ? live : tab.name;
 }
+
 const RANK = { blocked: 4, done: 3, working: 2, idle: 1 };
 const kidStatus = (k, listed) => {
   const s = listed.get(k.address) ?? k.status;
@@ -61,39 +66,17 @@ function icon(p, size, color) {
   return p.tint ? svg(p.icon).size(size).flex_none().text_color(color) : image(p.icon).w(size).h(size).flex_none();
 }
 
-const CAST = [
-  "harry", "hermione", "ron", "dumbledore", "snape", "hagrid", "mcgonagall",
-  "sirius", "draco", "luna", "bellatrix", "dobby", "hedwig", "dementor",
-];
-const DARK_LORD = "voldemort";
-const CAST_KEY = "hogwarts-agents.cast";
-const HERO_NAMES = {
-  voldemort: "Lord Voldemort",
-  harry: "Harry Potter",
-  hermione: "Hermione Granger",
-  ron: "Ron Weasley",
-  dumbledore: "Albus Dumbledore",
-  snape: "Severus Snape",
-  hagrid: "Rubeus Hagrid",
-  mcgonagall: "Prof. McGonagall",
-  sirius: "Sirius Black",
-  draco: "Draco Malfoy",
-  luna: "Luna Lovegood",
-  bellatrix: "Bellatrix Lestrange",
-  dobby: "Dobby",
-  hedwig: "Hedwig",
-  dementor: "Dementor",
-};
-const MOOD = { working: "Casting spells", idle: "In common room", done: "Mischief managed", blocked: "Needs backup" };
+const CAST = AGENTS_CONFIG.cast;
+const DARK_LORD = AGENTS_CONFIG.darkLord;
+const CAST_KEY = AGENTS_CONFIG.castKey;
+const LEGACY_CAST_KEY = AGENTS_CONFIG.legacyCastKey;
+const HERO_NAMES = Object.fromEntries(Object.entries(AGENTS_CONFIG.heroes).map(([id, h]) => [id, h.name]));
+const MOOD = AGENTS_CONFIG.mood;
 const MINUTE = 60000;
-const ROAD_STAGES = [
-  { after: 60 * MINUTE, mood: "Battle of Hogwarts" },
-  { after: 30 * MINUTE, mood: "Deep enchantment" },
-  { after: 10 * MINUTE, mood: "Brewing potions" },
-];
+const ROAD_STAGES = AGENTS_CONFIG.roadStages.map(({ afterMinutes, mood }) => ({ after: afterMinutes * MINUTE, mood }));
 const moodOf = (status, workingFor) =>
   status === "working" ? (ROAD_STAGES.find((s) => workingFor >= s.after)?.mood ?? MOOD.working) : (MOOD[status] ?? "");
-const titleCase = (s) => s[0].toUpperCase() + s.slice(1);
+const titleCase = (s) => (s ? s[0].toUpperCase() + s.slice(1) : "");
 const STATS_PERIOD = 15000;
 const CTX_WARN = 50;
 const CTX_DANGER = 80;
@@ -103,10 +86,11 @@ const CARD_PADDING_Y = 14;
 
 function castFor(list, all) {
   const saved = shared(CAST_KEY);
-  const cast = { ...(saved ?? {}) };
+  const previous = saved == null && LEGACY_CAST_KEY ? shared(LEGACY_CAST_KEY) : null;
+  const cast = { ...(saved ?? previous ?? {}) };
   const dark = settings().dark;
   const pool = dark ? [DARK_LORD, ...CAST] : CAST;
-  let changed = false;
+  let changed = previous != null;
   if (all.length) {
     const alive = new Set(all.filter((t) => t.state === "live").map((t) => t.address));
     for (const address of Object.keys(cast)) if (!alive.has(address)) { delete cast[address]; changed = true; }
@@ -144,7 +128,7 @@ export default class Agents extends View {
     if (!checking()) cx.timer.every(30000, (cx) => cx.notify());
     this.stats = {};
     if (checking()) return;
-    cx.timer.every(4800, cx => {
+    cx.timer.every(4800, (cx) => {
       if (window()?.visible === false) return;
       let changed = false;
       for (const space of this.activeBattles) {
@@ -168,7 +152,7 @@ export default class Agents extends View {
         const address = list[i].address;
         const before = this.stats[address];
         if (r.status === "rejected" || r.value.code !== 0) {
-          console.warn(`hogwarts-agents: hc read ${address} failed: ${r.reason ?? r.value.stderr.trim()}`);
+          console.warn(`${AGENTS_CONFIG.modName}: hc read ${address} failed: ${r.reason ?? r.value.stderr.trim()}`);
           if (before) next[address] = before;
           return;
         }
@@ -235,7 +219,7 @@ export default class Agents extends View {
       .p(5)
       .bg(t.popover)
       .text_size(12.8)
-      .child(div().px(8).pt(4).pb(6).text_size(11).text_color(t.dim).child("Sort wizards"))
+      .child(div().px(8).pt(4).pb(6).text_size(11).text_color(t.dim).child("Sort agents"))
       .children(SORTS.map((s) => h_flex()
         .id(`sort-${s.id}`)
         .h(31)
@@ -287,10 +271,10 @@ export default class Agents extends View {
       .when(on, (el) => el.bg(t.raised))
       .hover((s) => s.bg(t.hover))
       .on_click(() => (this.listed.has(k.address) ? run("pane.focus", { terminal: k.address }) : this.peek(k.address)))
-      .children(s.lines.map(l => div().self_start().mt(-4).w(9).h(17).mr(4).flex_none()
-        .when(Boolean(l), el => el.border_l(1.5).border_color(t.input))
-        .when(l === "└" || l === "├", el => el.border_b(1.5).rounded_bl(6))))
-      .when(Boolean(pic), el => el.child(div().mr(8).child(pic)))
+      .children(s.lines.map((l) => div().self_start().mt(-4).w(9).h(17).mr(4).flex_none()
+        .when(Boolean(l), (el) => el.border_l(1.5).border_color(t.input))
+        .when(l === "└" || l === "├", (el) => el.border_b(1.5).rounded_bl(6))))
+      .when(Boolean(pic), (el) => el.child(div().mr(8).child(pic)))
       .child(div().flex_1().truncate().text_color(on ? t.foreground : t.muted).child(k.name || k.template || k.program?.name || k.address))
       .child(this.status(t, { status: st }, compact));
   }
@@ -304,7 +288,7 @@ export default class Agents extends View {
     return div().size(7).mx(3).flex_none().rounded(4).bg(a.status === "done" ? color : t.dim + "00");
   }
 
-  render(cx) {
+  render() {
     const t = theme();
     if (props()?.sortMenu) return this.sortMenu(t);
     const collapsed = narrow();
@@ -373,14 +357,14 @@ export default class Agents extends View {
     };
 
     const leads = leadPanes(panes());
-    const tabs = new Map(spaces().flatMap(s => s.tabs).map(tab => [tab.id, tab]));
-    const labels = new Map(list.map(a => {
+    const tabs = new Map(spaces().flatMap((s) => s.tabs).map((tab) => [tab.id, tab]));
+    const labels = new Map(list.map((a) => {
       const tab = tabs.get(a.tab);
       const many = tabCounts.get(a.tab) > 1;
       return [a.address, tab ? title(many ? { ...tab, named: false } : tab, many ? a : leads.get(a.tab)) : (a.title || a.program?.name || "")];
     }));
     const label = (a) => labels.get(a.address);
-    const detail = new Map(list.map(a => [a.address, /^\d+$/.test(label(a)) ? null : label(a)]));
+    const detail = new Map(list.map((a) => [a.address, /^\d+$/.test(label(a)) ? null : label(a)]));
     const seen = {};
     for (const a of list) { const k = `${a.space_name}\u0000${detail.get(a.address) ?? ""}`; seen[k] = (seen[k] ?? 0) + 1; }
     for (const a of list) {
@@ -452,25 +436,25 @@ export default class Agents extends View {
           cx.notify();
         })
         .on_click(() => run("pane.focus", { pane: a.pane }))
-        .when(Boolean(sprite), el => el.child(div().id(`agent-fold-${a.address}`)
-          .when(subs.length > 0, el => el.on_click((_e, cx) => {
+        .when(Boolean(sprite), (el) => el.child(div().id(`agent-fold-${a.address}`)
+          .when(subs.length > 0, (el) => el.on_click((_e, cx) => {
             cx.stop_propagation();
             this.folded.has(a.address) ? this.folded.delete(a.address) : this.folded.add(a.address);
             cx.notify();
           })).child(sprite)))
         .child(v_flex().flex_1().min_w(0).gap(1)
-          .when(Boolean(hero), el => el.child(h_flex().min_w(0).gap(6).items_center()
+          .when(Boolean(hero), (el) => el.child(h_flex().min_w(0).gap(6).items_center()
             .child(div().min_w(0).truncate().font_semibold().text_color(t.foreground).child(HERO_NAMES[hero] ?? titleCase(hero ?? "")))
             .child(div().flex_1().min_w(0).truncate().text_size(11).text_color(t.dim).child(moodOf(a.status, when ? now - when : 0)))))
           .child(v_flex().min_w(0).gap(1).text_size(hero ? 11.5 : 13)
-            .when(Boolean(stat?.model), el => el.child(div().min_w(0).truncate().text_color(idle || hero ? t.muted : t.foreground).child(stat.model)))
-            .when(Boolean(place), el => el.child(div().min_w(0).truncate().font_semibold().text_color(t.foreground).child(place)))
-            .when(Boolean(session), el => el.child(div().min_w(0).truncate().text_color(t.dim).child(session))))
-          .when(hasCtx, el => el.child(this.ctxBar(t, stat.ctx))))
-        .when(Boolean(machine), el => el.child(div().text_size(10).text_color(t.dim).child(machine)))
-        .when(subs.length > 0, el => el.child(fold(a, subs)))
-        .when(this.hovered === a.address, el => el.child(pin))
-        .when(this.hovered !== a.address && Boolean(when), el => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
+            .when(Boolean(stat?.model), (el) => el.child(div().min_w(0).truncate().text_color(idle || hero ? t.muted : t.foreground).child(stat.model)))
+            .when(Boolean(place), (el) => el.child(div().min_w(0).truncate().font_semibold().text_color(t.foreground).child(place)))
+            .when(Boolean(session), (el) => el.child(div().min_w(0).truncate().text_color(t.dim).child(session))))
+          .when(hasCtx, (el) => el.child(this.ctxBar(t, stat.ctx))))
+        .when(Boolean(machine), (el) => el.child(div().text_size(10).text_color(t.dim).child(machine)))
+        .when(subs.length > 0, (el) => el.child(fold(a, subs)))
+        .when(this.hovered === a.address, (el) => el.child(pin))
+        .when(this.hovered !== a.address && Boolean(when), (el) => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
         .child(this.status(t, a, byPriority && !isPinned));
     };
 
@@ -516,8 +500,8 @@ export default class Agents extends View {
       shownBattles.add(space);
       if (!this.battleStates.has(space)) this.battleStates.set(space, { paused: false, page: 0, turn: 0 });
       const state = this.battleStates.get(space);
-      const members = battles.get(space);
-      const scene = battleScene(space, members, cast, t, {
+      const spaceMembers = battles.get(space);
+      const scene = battleScene(space, spaceMembers, cast, t, {
         ...state,
         onPause: (_event, cx) => {
           state.paused = !state.paused;
@@ -528,7 +512,7 @@ export default class Agents extends View {
           state.turn = 0;
           cx.notify();
         },
-        onOpen: fighters => openOverlay({ mod: "hogwarts-arena", props: { space, fighters: fighters.map(agent => cast[agent.address]) } }),
+        onOpen: (fighters) => openOverlay({ mod: AGENTS_CONFIG.arenaModName, props: { space, fighters: fighters.map((agent) => cast[agent.address]) } }),
       });
       return [scene, ...withKids(a, list.indexOf(a))];
     });
@@ -554,21 +538,21 @@ export default class Agents extends View {
             .flex_none()
             .items_center()
             .justify_between()
-            .child(div().text_size(11.5).font_medium().text_color(t.dim).child("Wizards"))
+            .child(div().text_size(11.5).font_medium().text_color(t.dim).child(AGENTS_CONFIG.sidebarTitle))
             .child(
               div()
                 .id("ag-sort")
                 .text_size(11)
                 .text_color(t.dim)
                 .hover((s) => s.text_color(t.foreground))
-                .on_click(() => openOverlay({ mod: "hogwarts-agents", kind: "popup", width: 200, height: 140, props: { sortMenu: true } }))
-                .tooltip(`Sort wizards: ${sort.label}`)
+                .on_click(() => openOverlay({ mod: AGENTS_CONFIG.modName, kind: "popup", width: 200, height: 140, props: { sortMenu: true } }))
+                .tooltip(`Sort agents: ${sort.label}`)
                 .child(svg(`mods/workspace-chrome/${sort.icon}.svg`).size(14)),
             ),
         ),
       )
       .when(list.length === 0 && !collapsed, (el) =>
-        el.child(div().px(12).text_size(12).text_color(t.dim).child("No wizards on duty yet. Agents appear here when they report their status.")),
+        el.child(div().px(12).text_size(12).text_color(t.dim).child(AGENTS_CONFIG.emptyMessage)),
       )
       .child(v_flex().id("ag-list").flex_1().min_h(0).px(collapsed ? 0 : 8).overflow_y_scrollbar().mode("always").children(rows))
       .when(collapsed, (el) =>
